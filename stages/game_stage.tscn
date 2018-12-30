@@ -1,0 +1,988 @@
+[gd_scene load_steps=43 format=2]
+
+[ext_resource path="res://scripts/camera.gd" type="Script" id=1]
+[ext_resource path="res://scenes/bird.tscn" type="PackedScene" id=2]
+[ext_resource path="res://scenes/spawner_ground.tscn" type="PackedScene" id=3]
+[ext_resource path="res://scenes/background.tscn" type="PackedScene" id=4]
+[ext_resource path="res://scenes/spawner_pipe.tscn" type="PackedScene" id=5]
+[ext_resource path="res://sprites/instructions.png" type="Texture" id=6]
+[ext_resource path="res://fonts/font_score.TTF" type="DynamicFontData" id=7]
+[ext_resource path="res://sprites/button_pause.png" type="Texture" id=8]
+[ext_resource path="res://sprites/label_game_over.png" type="Texture" id=9]
+[ext_resource path="res://sprites/panel_score.png" type="Texture" id=10]
+[ext_resource path="res://sprites/label_new.png" type="Texture" id=11]
+[ext_resource path="res://sprites/medal_bronze.png" type="Texture" id=12]
+[ext_resource path="res://sprites/spark_0.png" type="Texture" id=13]
+[ext_resource path="res://sprites/spark_1.png" type="Texture" id=14]
+[ext_resource path="res://sprites/spark_2.png" type="Texture" id=15]
+[ext_resource path="res://sprites/button_play_normal.png" type="Texture" id=16]
+[ext_resource path="res://sprites/button_play_pressed.png" type="Texture" id=17]
+[ext_resource path="res://sprites/button_score_normal.png" type="Texture" id=18]
+[ext_resource path="res://sprites/button_score_pressed.png" type="Texture" id=19]
+[ext_resource path="res://sprites/rect_black.png" type="Texture" id=20]
+[ext_resource path="res://sprites/button_resume.png" type="Texture" id=21]
+[ext_resource path="res://sprites/button_menu.png" type="Texture" id=22]
+
+[sub_resource type="GDScript" id=1]
+
+resource_name = "shaker"
+script/source = "#script: shaker (built-in)
+
+extends Node
+
+onready var camera = get_parent()
+
+var time = 0
+
+const duration = 0.18
+const magnitude = 3
+
+func _ready():
+  var bird = utils.get_main_node().get_node(\"bird\")
+  if bird: bird.connect(\"state_changed\", self, \"_on_bird_state_changed\")
+  pass
+  
+func _on_bird_state_changed(bird):
+  if bird.get_state() == bird.STATE_HIT or bird.get_state() == bird.STATE_GROUNDED:
+    shake()
+    bird.disconnect(\"state_changed\", self, \"_on_bird_state_changed\")
+  pass
+  
+func shake():
+  var initial_offset = camera.get_offset()
+  while time < duration:
+    time += get_process_delta_time()
+    time = min(time, duration)
+    
+    var offset = Vector2()
+    offset.x = rand_range(-magnitude, magnitude)
+    offset.y = rand_range(-magnitude, magnitude)
+    camera.set_offset(initial_offset + offset)
+
+    yield(get_tree(), \"idle_frame\")
+    pass
+  
+  time = 0
+  camera.set_offset(initial_offset)
+  pass"
+_sections_unfolded = [ "Resource" ]
+
+[sub_resource type="GDScript" id=2]
+
+script/source = "#script: btn_instructions (built-in)
+
+extends TextureButton
+
+func _ready():
+  connect(\"pressed\", self, \"_on_pressed\")
+  grab_focus()
+  pass
+  
+func _on_pressed():
+  var bird = utils.get_main_node().get_node(\"bird\")
+  
+  if bird:
+    bird.set_state(bird.STATE_FLAPPING)
+  
+  hide()
+  pass"
+_sections_unfolded = [ "Resource" ]
+
+[sub_resource type="DynamicFont" id=3]
+
+size = 14
+use_mipmaps = false
+use_filter = false
+font_data = ExtResource( 7 )
+_sections_unfolded = [ "Font", "Resource", "Settings" ]
+
+[sub_resource type="GDScript" id=4]
+
+script/source = "#script lbl_score (built-in)
+
+extends Label
+
+func _ready():
+  game.connect(\"score_current_changed\", self, \"_on_score_current_changed\")
+  var bird = utils.get_main_node().get_node(\"bird\")
+  
+  if bird:
+    bird.connect(\"state_changed\", self, \"_on_bird_state_changed\")
+  
+  set_text(str(game.score_current))
+  pass
+  
+func _on_score_current_changed():
+  set_text(str(game.score_current))
+  pass
+  
+func _on_bird_state_changed(bird):
+  if bird.get_state() == bird.STATE_HIT: hide()
+  if bird.get_state() == bird.STATE_GROUNDED: hide()
+  pass"
+_sections_unfolded = [ "Resource" ]
+
+[sub_resource type="GDScript" id=5]
+
+resource_name = "btn_pause"
+script/source = "#script: btn_pause (built-in)
+
+extends TextureButton
+
+func _ready():
+  connect(\"pressed\", self, \"_on_pressed\")
+  
+  var bird = utils.get_main_node().get_node(\"bird\")
+  
+  if bird: bird.connect(\"state_changed\", self, \"_on_bird_stage_changed\")
+  pass
+  
+func _on_pressed():
+  get_tree().set_pause(true)
+  pass
+  
+func _on_bird_stage_changed(bird):
+  if bird.get_state() == bird.STATE_HIT: hide()
+  if bird.get_state() == bird.STATE_GROUNDED: hide()
+  pass"
+_sections_unfolded = [ "Resource" ]
+
+[sub_resource type="GDScript" id=6]
+
+script/source = "# script: cntr_gameover (built-in)
+
+extends Container
+
+func _ready():
+  hide()
+  var bird = utils.get_main_node().get_node(\"bird\")
+  
+  if bird:
+    bird.connect(\"state_changed\", self, \"_on_bird_state_changed\")
+  pass
+
+func _on_bird_state_changed(bird):
+  if bird.get_state() == bird.STATE_GROUNDED:
+    get_node(\"anim\").play(\"show\")
+  pass"
+_sections_unfolded = [ "Resource" ]
+
+[sub_resource type="DynamicFont" id=7]
+
+size = 10
+use_mipmaps = false
+use_filter = false
+font_data = ExtResource( 7 )
+_sections_unfolded = [ "Font", "Settings" ]
+
+[sub_resource type="GDScript" id=8]
+
+resource_local_to_scene = true
+script/source = "#script: lbl_score_last (built-in)
+
+extends Label
+
+signal counting_finished
+
+func _ready():
+  var anim = utils.get_main_node().get_node(\"hud/cntr_gameover/anim\")
+  yield(anim, \"animation_finished\")
+  count_to_score()
+  pass
+
+func count_to_score():
+  var lerp_time = 0
+  var lerp_duration = 0.5
+
+  while lerp_time < lerp_duration:
+    lerp_time += get_process_delta_time()
+    lerp_time = min(lerp_time, lerp_duration)
+  
+    var percent = lerp_time / lerp_duration
+    set_number(int(lerp(0, game.score_current, percent)))
+
+    yield(get_tree(), \"idle_frame\")
+    
+  game.score_best = game.score_current
+  emit_signal(\"counting_finished\")
+  pass
+  
+func set_number(value):
+  set_text(str(value))
+  pass"
+_sections_unfolded = [ "Resource" ]
+
+[sub_resource type="GDScript" id=9]
+
+resource_local_to_scene = true
+script/source = "#script: lbl_score_best (built-in)
+
+extends Label
+
+func _ready():
+  game.connect(\"score_best_changed\", self, \"on_score_best_changed\")
+  set_number(game.score_best)
+  pass
+  
+func on_score_best_changed():
+  set_number(game.score_best)
+  pass
+
+func set_number(value):
+  set_text(str(value))
+  pass"
+_sections_unfolded = [ "Resource" ]
+
+[sub_resource type="GDScript" id=10]
+
+script/source = "#script: tex_new (built-in)
+
+extends TextureRect
+
+func _ready():
+  hide()
+  game.connect(\"score_best_changed\", self, \"show\")
+  pass"
+_sections_unfolded = [ "Resource" ]
+
+[sub_resource type="GDScript" id=11]
+
+resource_name = "tex_medal"
+script/source = "#script: tex_medal (built-in)
+
+extends TextureRect
+
+const spr_medal_bronze = preload(\"res://sprites/medal_bronze.png\")
+const spr_medal_silver = preload(\"res://sprites/medal_silver.png\")
+const spr_medal_gold = preload(\"res://sprites/medal_gold.png\")
+const spr_medal_platinum = preload(\"res://sprites/medal_platinum.png\")
+
+signal shown
+
+func _ready():
+  hide()
+
+  var lbl_score_last = utils.get_main_node().find_node(\"lbl_score_last\")
+  if lbl_score_last:
+    lbl_score_last.connect(\"counting_finished\", self, \"show_medal\")
+  pass
+  
+func show_medal():
+  var texture = null
+  
+  if game.score_current >= game.MEDAL_BRONZE: texture = spr_medal_bronze
+  if game.score_current >= game.MEDAL_SILVER: texture = spr_medal_silver
+  if game.score_current >= game.MEDAL_GOLD: texture = spr_medal_gold
+  if game.score_current >= game.MEDAL_PLATINUM: texture = spr_medal_platinum
+  
+  if texture != null:
+    set_texture(texture)
+    show()
+    emit_signal(\"shown\")
+  pass"
+_sections_unfolded = [ "Resource" ]
+
+[sub_resource type="SpriteFrames" id=12]
+
+animations = [ {
+"frames": [ ExtResource( 13 ), ExtResource( 14 ), ExtResource( 15 ) ],
+"loop": true,
+"name": "default",
+"speed": 5.0
+} ]
+
+[sub_resource type="GDScript" id=13]
+
+resource_name = "spr_spark"
+script/source = "#script: spr_spark
+
+extends AnimatedSprite
+
+const MEDAL_RADIUS = 11
+
+func _ready():
+  to_random_pos()
+
+  var tex_medal = get_parent()
+  tex_medal.connect(\"shown\", get_node(\"anim\"), \"play\", [\"shine\"])
+  pass
+
+func to_random_pos():
+  var rand_angle = deg2rad(rand_range(0, 360))
+  var rand_radius = rand_range(0, MEDAL_RADIUS)
+  var x = rand_radius * cos(rand_angle) + MEDAL_RADIUS
+  var y = rand_radius * sin(rand_angle) + MEDAL_RADIUS
+  set_position(Vector2(x, y))
+  pass"
+_sections_unfolded = [ "Resource" ]
+
+[sub_resource type="Animation" id=14]
+
+resource_name = "shine"
+length = 0.5
+loop = true
+step = 0.1
+tracks/0/type = "value"
+tracks/0/path = NodePath(".:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/keys = {
+"times": PoolRealArray( 0, 0.1, 0.2, 0.3, 0.4 ),
+"transitions": PoolRealArray( 1, 1, 1, 1, 1 ),
+"update": 1,
+"values": [ 0, 1, 2, 1, 0 ]
+}
+tracks/1/type = "method"
+tracks/1/path = NodePath(".")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/keys = {
+"times": PoolRealArray( 0.5 ),
+"transitions": PoolRealArray( 1 ),
+"values": [ {
+"args": [  ],
+"method": "to_random_pos"
+} ]
+}
+
+[sub_resource type="GDScript" id=15]
+
+script/source = "#script: hbox_buttons (built-in)
+
+extends HBoxContainer
+
+func _ready():
+  hide()
+
+  var hbox_score_last = utils.get_main_node().find_node(\"lbl_score_last\")
+
+  if hbox_score_last:
+    hbox_score_last.connect(\"counting_finished\", self, \"show\")
+  pass
+"
+_sections_unfolded = [ "Resource" ]
+
+[sub_resource type="GDScript" id=16]
+
+script/source = "#script btn_play (built-in)
+
+extends TextureButton
+
+func _ready():
+  connect(\"pressed\", self, \"_on_pressed\")
+  
+  var hbox_score_last = utils.get_main_node().find_node(\"lbl_score_last\")
+
+  if hbox_score_last:
+    hbox_score_last.connect(\"counting_finished\", self, \"grab_focus\")
+  pass
+  
+func _on_pressed():
+  state_manager.change_stage(state_manager.STAGE_GAME)
+  pass"
+_sections_unfolded = [ "Resource" ]
+
+[sub_resource type="Animation" id=17]
+
+length = 1.0
+loop = false
+step = 0.1
+tracks/0/type = "value"
+tracks/0/path = NodePath(".:visible")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/keys = {
+"times": PoolRealArray( 0 ),
+"transitions": PoolRealArray( 1 ),
+"update": 1,
+"values": [ true ]
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath("tex_gameover:modulate")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/keys = {
+"times": PoolRealArray( 0, 0.7 ),
+"transitions": PoolRealArray( 1, 1 ),
+"update": 0,
+"values": [ Color( 1, 1, 1, 0 ), Color( 1, 1, 1, 1 ) ]
+}
+tracks/2/type = "value"
+tracks/2/path = NodePath("tex_gameover:rect_position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/keys = {
+"times": PoolRealArray( 0, 0.7 ),
+"transitions": PoolRealArray( 1, 1 ),
+"update": 0,
+"values": [ Vector2( 24, 45 ), Vector2( 24, 50 ) ]
+}
+tracks/3/type = "value"
+tracks/3/path = NodePath("tex_panelscore:rect_position")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/keys = {
+"times": PoolRealArray( 0, 1 ),
+"transitions": PoolRealArray( 0.25, 1 ),
+"update": 0,
+"values": [ Vector2( 16, 270 ), Vector2( 16, 90 ) ]
+}
+
+[sub_resource type="GDScript" id=18]
+
+script/source = "#script: cntr_pause (built-in)
+
+extends Container
+
+func _ready():
+  hide()
+
+  var btn_pause = utils.get_main_node().find_node(\"btn_pause\")
+  if btn_pause: btn_pause.connect(\"pressed\", self, \"_on_pause\")
+  
+  var btn_resume = utils.get_main_node().find_node(\"btn_resume\")
+  if btn_resume: btn_resume.connect(\"pressed\", self, \"_on_resume\")
+  pass
+  
+func _on_pause():
+  show()
+  pass
+
+func _on_resume():
+  hide()
+  pass"
+_sections_unfolded = [ "Resource" ]
+
+[sub_resource type="GDScript" id=19]
+
+script/source = "#script: btn_resume (built-in)
+
+extends TextureButton
+
+func _ready():
+  connect(\"pressed\", self, \"_on_pressed\")
+  pass
+  
+func _on_pressed():
+  get_tree().set_pause(false)
+  show()
+  pass
+"
+_sections_unfolded = [ "Resource" ]
+
+[sub_resource type="GDScript" id=20]
+
+script/source = "#script: btn_menu (built-in)
+
+extends TextureButton
+
+func _ready():
+  connect(\"pressed\", self, \"_on_pressed\")
+  pass
+  
+func _on_pressed():
+  get_tree().set_pause(false)
+  state_manager.change_stage(state_manager.STAGE_MENU)
+  pass"
+_sections_unfolded = [ "Resource" ]
+
+[node name="world" type="Node" index="0"]
+
+[node name="camera" type="Camera2D" parent="." index="0"]
+
+editor/display_folded = true
+offset = Vector2( -36, 0 )
+anchor_mode = 0
+rotating = false
+current = true
+zoom = Vector2( 1, 1 )
+limit_left = -10000000
+limit_top = -10000000
+limit_right = 10000000
+limit_bottom = 10000000
+limit_smoothed = false
+drag_margin_h_enabled = true
+drag_margin_v_enabled = true
+smoothing_enabled = false
+smoothing_speed = 5.0
+offset_v = 0.0
+offset_h = 0.0
+drag_margin_left = 0.2
+drag_margin_top = 0.2
+drag_margin_right = 0.2
+drag_margin_bottom = 0.2
+editor_draw_screen = true
+editor_draw_limits = false
+editor_draw_drag_margin = false
+script = ExtResource( 1 )
+
+[node name="shaker" type="Node" parent="camera" index="0"]
+
+script = SubResource( 1 )
+
+[node name="bird" parent="." index="1" instance=ExtResource( 2 )]
+
+position = Vector2( 36, 120 )
+
+[node name="spawner_ground" parent="." index="2" instance=ExtResource( 3 )]
+
+[node name="background" parent="." index="3" instance=ExtResource( 4 )]
+
+[node name="spawner_pipe" parent="." index="4" instance=ExtResource( 5 )]
+
+[node name="hud" type="CanvasLayer" parent="." index="5"]
+
+editor/display_folded = true
+layer = 1
+offset = Vector2( 0, 0 )
+rotation = 0.0
+scale = Vector2( 1, 1 )
+transform = Transform2D( 1, 0, 0, 1, 0, 0 )
+
+[node name="btn_instructions" type="TextureButton" parent="hud" index="0"]
+
+editor/display_folded = true
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_right = 144.0
+margin_bottom = 256.0
+rect_min_size = Vector2( 144, 256 )
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+focus_mode = 2
+mouse_filter = 0
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+toggle_mode = false
+action_mode = 0
+enabled_focus_mode = 2
+shortcut = null
+group = null
+script = SubResource( 2 )
+_sections_unfolded = [ "Focus", "Hint", "Mouse", "Rect", "Size Flags", "Textures", "Theme", "Visibility" ]
+
+[node name="texture" type="TextureRect" parent="hud/btn_instructions" index="0"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 44.0
+margin_top = 104.0
+margin_right = 101.0
+margin_bottom = 153.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 1
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+texture = ExtResource( 6 )
+stretch_mode = 0
+_sections_unfolded = [ "Rect" ]
+
+[node name="lbl_score" type="Label" parent="hud" index="1"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_top = 10.0
+margin_right = 144.0
+margin_bottom = 30.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 2
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 4
+custom_fonts/font = SubResource( 3 )
+custom_colors/font_color_shadow = Color( 0, 0, 0, 1 )
+text = "0"
+align = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+script = SubResource( 4 )
+_sections_unfolded = [ "Focus", "Hint", "Material", "Mouse", "Pause", "Rect", "Visibility" ]
+
+[node name="btn_pause" type="TextureButton" parent="hud" index="2"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 10.0
+margin_top = 10.0
+margin_right = 23.0
+margin_bottom = 24.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+focus_mode = 2
+mouse_filter = 0
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+toggle_mode = false
+enabled_focus_mode = 2
+shortcut = null
+group = null
+texture_normal = ExtResource( 8 )
+script = SubResource( 5 )
+_sections_unfolded = [ "Rect", "Textures" ]
+
+[node name="cntr_gameover" type="Container" parent="hud" index="3"]
+
+editor/display_folded = true
+visible = false
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_right = 144.0
+margin_bottom = 256.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 0
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+script = SubResource( 6 )
+_sections_unfolded = [ "Rect", "Visibility" ]
+
+[node name="tex_gameover" type="TextureRect" parent="hud/cntr_gameover" index="0"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 24.0
+margin_top = 50.0
+margin_right = 120.0
+margin_bottom = 73.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 1
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+texture = ExtResource( 9 )
+stretch_mode = 0
+_sections_unfolded = [ "Rect", "Visibility" ]
+
+[node name="tex_panelscore" type="TextureRect" parent="hud/cntr_gameover" index="1"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 16.0
+margin_top = 90.0
+margin_right = 129.0
+margin_bottom = 147.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 1
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+texture = ExtResource( 10 )
+stretch_mode = 0
+_sections_unfolded = [ "Rect" ]
+
+[node name="lbl_score_last" type="Label" parent="hud/cntr_gameover/tex_panelscore" index="0"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 62.0
+margin_top = 16.0
+margin_right = 102.0
+margin_bottom = 27.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 2
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 4
+custom_fonts/font = SubResource( 7 )
+custom_colors/font_color_shadow = Color( 0, 0, 0, 1 )
+text = "0"
+align = 2
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+script = SubResource( 8 )
+_sections_unfolded = [ "Anchor", "custom_colors", "custom_fonts" ]
+
+[node name="lbl_score_best" type="Label" parent="hud/cntr_gameover/tex_panelscore" index="1"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 62.0
+margin_top = 37.0
+margin_right = 102.0
+margin_bottom = 48.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 2
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 4
+custom_fonts/font = SubResource( 7 )
+custom_colors/font_color_shadow = Color( 0, 0, 0, 1 )
+text = "0"
+align = 2
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+script = SubResource( 9 )
+_sections_unfolded = [ "Anchor", "custom_colors", "custom_fonts" ]
+
+[node name="tex_new" type="TextureRect" parent="hud/cntr_gameover/tex_panelscore" index="2"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 67.0
+margin_top = 29.0
+margin_right = 83.0
+margin_bottom = 36.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 1
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+texture = ExtResource( 11 )
+stretch_mode = 0
+script = SubResource( 10 )
+
+[node name="tex_medal" type="TextureRect" parent="hud/cntr_gameover/tex_panelscore" index="3"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 13.0
+margin_top = 22.0
+margin_right = 35.0
+margin_bottom = 44.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 1
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+texture = ExtResource( 12 )
+stretch_mode = 0
+script = SubResource( 11 )
+
+[node name="spr_spark" type="AnimatedSprite" parent="hud/cntr_gameover/tex_panelscore/tex_medal" index="0"]
+
+position = Vector2( -0.5, 0.5 )
+frames = SubResource( 12 )
+animation = "default"
+script = SubResource( 13 )
+
+[node name="anim" type="AnimationPlayer" parent="hud/cntr_gameover/tex_panelscore/tex_medal/spr_spark" index="0"]
+
+root_node = NodePath("..")
+autoplay = ""
+playback_process_mode = 1
+playback_default_blend_time = 0.0
+playback_speed = 0.8
+anims/shine = SubResource( 14 )
+blend_times = [  ]
+_sections_unfolded = [ "Playback Options" ]
+
+[node name="hbox_buttons" type="HBoxContainer" parent="hud/cntr_gameover" index="2"]
+
+visible = false
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 17.0
+margin_top = 160.0
+margin_right = 130.0
+margin_bottom = 189.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 1
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+custom_constants/separation = 9
+alignment = 1
+script = SubResource( 15 )
+_sections_unfolded = [ "Rect", "custom_constants" ]
+
+[node name="btn_play" type="TextureButton" parent="hud/cntr_gameover/hbox_buttons" index="0"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_right = 52.0
+margin_bottom = 29.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+focus_mode = 2
+mouse_filter = 0
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+toggle_mode = false
+enabled_focus_mode = 2
+shortcut = null
+group = null
+texture_normal = ExtResource( 16 )
+texture_pressed = ExtResource( 17 )
+script = SubResource( 16 )
+_sections_unfolded = [ "Textures" ]
+
+[node name="btn_scores" type="TextureButton" parent="hud/cntr_gameover/hbox_buttons" index="1"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 61.0
+margin_right = 113.0
+margin_bottom = 29.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+focus_mode = 2
+mouse_filter = 0
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+toggle_mode = false
+enabled_focus_mode = 2
+shortcut = null
+group = null
+texture_normal = ExtResource( 18 )
+texture_pressed = ExtResource( 19 )
+_sections_unfolded = [ "Textures" ]
+
+[node name="anim" type="AnimationPlayer" parent="hud/cntr_gameover" index="3"]
+
+root_node = NodePath("..")
+autoplay = ""
+playback_process_mode = 1
+playback_default_blend_time = 0.0
+playback_speed = 1.5
+anims/show = SubResource( 17 )
+blend_times = [  ]
+_sections_unfolded = [ "Playback Options" ]
+
+[node name="cntr_pause" type="Container" parent="hud" index="4"]
+
+pause_mode = 2
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_right = 144.0
+margin_bottom = 256.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 0
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+script = SubResource( 18 )
+_sections_unfolded = [ "Pause", "Rect" ]
+
+[node name="tex_background" type="TextureRect" parent="hud/cntr_pause" index="0"]
+
+modulate = Color( 1, 1, 1, 0.299216 )
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_right = 144.0
+margin_bottom = 256.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 1
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+texture = ExtResource( 20 )
+expand = true
+stretch_mode = 0
+_sections_unfolded = [ "Rect", "Visibility" ]
+
+[node name="btn_resume" type="TextureButton" parent="hud/cntr_pause" index="1"]
+
+pause_mode = 2
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 10.0
+margin_top = 10.0
+margin_right = 23.0
+margin_bottom = 24.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+focus_mode = 2
+mouse_filter = 0
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+toggle_mode = false
+enabled_focus_mode = 2
+shortcut = null
+group = null
+texture_normal = ExtResource( 21 )
+script = SubResource( 19 )
+_sections_unfolded = [ "Pause", "Rect", "Textures" ]
+
+[node name="btn_menu" type="TextureButton" parent="hud/cntr_pause" index="2"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 52.0
+margin_top = 121.0
+margin_right = 92.0
+margin_bottom = 135.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+focus_mode = 2
+mouse_filter = 0
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+toggle_mode = false
+enabled_focus_mode = 2
+shortcut = null
+group = null
+texture_normal = ExtResource( 22 )
+script = SubResource( 20 )
+_sections_unfolded = [ "Rect", "Textures" ]
+
+
